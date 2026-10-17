@@ -77,10 +77,19 @@ default_string(NSString *key)
 	mpv_set_option_string(mpv, "keep-open", "yes");
 	mpv_set_option_string(mpv, "ytdl", "no");
 	mpv_set_option_string(mpv, "volume-max", "100");
-	/* No hardware decoder is reachable on this system (the Pi's is on the
-	 * VideoCore VPU, behind MMAL/VCHIQ): FFmpeg decodes with NEON on every
-	 * core. The GPU's part is in the GL renderer. */
-	mpv_set_option_string(mpv, "hwdec", "no");
+	/* The Pi's video decoder is on the VideoCore VPU: FFmpeg's h264_mmal
+	 * reaches it through MMAL over VCHIQ (iokit's BCM2837VCHIQ driver), and
+	 * mpv's mmal-copy hands the decoded frames back as ordinary YUV
+	 * images, so both renderers take them as they take FFmpeg's. Only for
+	 * the codecs the Pi 3 decodes without a purchased licence key (H.264
+	 * and MPEG-4 Part 2; MPEG-2 and VC-1 need one). Where there is no VPU
+	 * (QEMU), or the codec or the stream is one the VPU refuses, mpv falls
+	 * back to FFmpeg's software decoder, with NEON on every core.
+	 * VeniceHardwareDecoding NO: always software. */
+	BOOL hw = [[NSUserDefaults standardUserDefaults] objectForKey: @"VeniceHardwareDecoding"] == nil ||
+	    [[NSUserDefaults standardUserDefaults] boolForKey: @"VeniceHardwareDecoding"];
+	mpv_set_option_string(mpv, "hwdec", hw ? "mmal-copy" : "no");
+	mpv_set_option_string(mpv, "hwdec-codecs", "h264,mpeg4");
 	mpv_set_option_string(mpv, "vd-lavc-threads", "0");
 	/* Cheaper GL shaders (bilinear scaling, no dithering, no HDR peak
 	 * detection) and the fastest swscale path for the sw renderer: the Pi 3's
@@ -285,7 +294,7 @@ default_string(NSString *key)
 - (NSString *) playbackStats
 {
 	NSMutableString *out = [NSMutableString string];
-	const char *props[] = { "video-codec", "width", "height", "container-fps", "frame-drop-count",
+	const char *props[] = { "video-codec", "hwdec-current", "width", "height", "container-fps", "frame-drop-count",
 	    "decoder-frame-drop-count", "current-ao", "audio-codec-name", NULL };
 	for (int i = 0; mpv != NULL && props[i] != NULL; i++) {
 		char *v = mpv_get_property_string(mpv, props[i]);

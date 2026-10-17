@@ -6,8 +6,10 @@
  * Plays local files and network streams (http, https, HLS, RTMP, UDP, ...;
  * whatever FFmpeg's protocols and demuxers take). Defaults (all optional):
  * VeniceRenderer (gl, the default, or sw), VeniceMPVOptions
- * ("key=value,key=value", passed to mpv), VeniceQuitAtEnd (YES: quit when
- * the file ends, exit status 1 if it cannot be played; for scripted tests).
+ * ("key=value,key=value", passed to mpv), VeniceHardwareDecoding (NO:
+ * decode in software even where the VPU could), VeniceQuitAtEnd (YES: quit
+ * when the file ends, exit status 1 if it cannot be played; for scripted
+ * tests).
  * Environment: VENICE_DEBUG=1 prints
  * mpv's log, VENICE_STATS=1 the renderer's frame times.
  */

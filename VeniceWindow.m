@@ -331,7 +331,12 @@ info_line(NSMutableString *s, NSString *label, NSString *value)
 		    : [NSString stringWithFormat: @"%.3g fps, %.3g shown", [fps doubleValue], [shown doubleValue]]);
 	}
 	info_line(s, @"Video bitrate", prop("video-bitrate"));
-	info_line(s, @"Decoder", [NSString stringWithFormat: @"%@ (software, FFmpeg)", prop("hwdec-current") ?: @"no hardware"]);
+	{
+		NSString *hwdec = prop("hwdec-current");
+		info_line(s, @"Decoder", hwdec == nil || [hwdec isEqualToString: @"no"] || [hwdec length] == 0
+		    ? @"software (FFmpeg)"
+		    : [NSString stringWithFormat: @"hardware, VideoCore VPU (%@)", hwdec]);
+	}
 	info_line(s, @"Renderer", [NSString stringWithFormat: @"%s: %s", [videoView rendererName], [videoView rendererInfo]]);
 	info_line(s, @"Output size", join(prop("osd-width"), @" x ", prop("osd-height")));
 	info_line(s, @"Dropped", join(prop("frame-drop-count"), @" output, ", join(prop("decoder-frame-drop-count"), @" decoder", @"")));
