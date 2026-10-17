@@ -13,18 +13,20 @@
 
 ## How fast, on a Raspberry Pi 3
 
-Big Buck Bunny, 720p H.264 High at 30 fps and 8 Mb/s, on a Pi 3 B with a 1920x1080 desktop, played four times over (1200 frames), GL renderer:
+Big Buck Bunny, 720p H.264 High at 30 fps and 8 Mb/s, one pass (300 frames), on a Pi 3 B with a 1920x1080 desktop, GL renderer:
 
-| Window | Frames dropped | Per frame: read back from the GPU | put on the window |
-|---|---|---|---|
-| 854x480 | 177 (15%) | 20 ms | 3.6 ms |
-| 1280x720 | 213 (18%) | 45 ms | 8 ms |
+| Window | Frames dropped | Drawn per frame |
+|---|---|---|
+| 854x480 | 9 (3%) | 29 ms |
+| 1280x720 | 30 (10%) | 29 ms |
 
-The decoder is not what limits it: with no video output the same clip drops 8 of 300 frames. The limit is getting the GPU's frame onto the screen: iokit's vc4 presenter copies each frame out of GPU memory with the CPU and puts it through MIT-SHM. A window opens at most 1280 wide for a video (`VeniceMaxVideoWidth`).
+Three things on the system decide this, and an image needs all three (iokit has them):
 
-That needs MIT-SHM. If `xlib_vc4` reports "MIT-SHM not used: shmget failed", the image's `/etc/sysctl.conf` was not applied (its `/usr/sbin/sysctl` is missing) and each frame goes through the X socket instead: 41 ms to put at 854x480 instead of 3.6, two thirds of the frames dropped. iokit's `inject_into_sd_image.sh` now always installs sysctl.
+- **The ARM clock.** The firmware keeps the cores at 600 MHz unless asked for more, and nothing in the port asks, so `config.txt` sets `force_turbo=1` (1.2 GHz). At 600 MHz FFmpeg decodes this clip at about 30 frames/s on four cores, no headroom at all, and two thirds of the frames were dropped; at 1.2 GHz it decodes at about 60.
+- **MIT-SHM.** If `xlib_vc4` reports "MIT-SHM not used: shmget failed", `/etc/sysctl.conf` was not applied (no `/usr/sbin/sysctl`) and every frame goes through the X socket (41 ms instead of 3.6 to put an 854x480 frame).
+- **The GPU read-back.** Each GL frame is read back from GPU memory by the CPU; the V3D driver now does that through a really cached mapping (4.1 ms for 1280x720 instead of 37.7).
 
-The sw renderer is 3-5x slower than gl at every size, which is why gl is the default.
+The decoder is software (FFmpeg, NEON, four threads); the GPU does colour conversion, scaling and subtitles. A window opens at most 1280 wide for a video (`VeniceMaxVideoWidth`). The sw renderer is 3-5x slower than gl at every size, which is why gl is the default.
 
 ## What you cannot do (yet)
 
