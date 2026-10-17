@@ -1,0 +1,18 @@
+{
+	NSTypes = (
+		{
+			NSName = "Video";
+			NSHumanReadableName = "Video";
+			NSRole = Viewer;
+			NSIcon = "Venice.png";
+			NSUnixExtensions = ( mp4, m4v, mkv, webm, mov, avi, ts, m2ts, mts, mpg, mpeg, flv, wmv, ogv, 3gp, m3u8 );
+		},
+		{
+			NSName = "Audio";
+			NSHumanReadableName = "Audio";
+			NSRole = Viewer;
+			NSIcon = "Venice.png";
+			NSUnixExtensions = ( mp3, m4a, aac, flac, ogg, oga, opus, wav );
+		}
+	);
+}

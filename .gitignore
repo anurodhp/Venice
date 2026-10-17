@@ -1,0 +1,7 @@
+obj/
+*.app/
+*.o
+.build-test/
+
+# a README is wanted here (a global ~/.gitignore ignores them)
+!README.md
