@@ -2,6 +2,19 @@
 
 **A small video player for GNUstep, on libmpv.** Venice plays local files and network streams on the GNUstep + Window Maker desktop of the Raspberry Pi 3 port of Darwin (the sibling repository [iokit](https://github.com/anurodhp/xnu-iokit-pi3)), next to [Milan](https://github.com/anurodhp/milan), [Naples](https://github.com/anurodhp/naples) and [Rome](https://github.com/anurodhp/rome). Playback is [mpv](https://mpv.io)'s, through libmpv's render API; Venice adds the window, the controls and the drawing surface.
 
+![Venice playing a clip on the Pi 3, with the Video Info panel open](docs/screenshot.png)
+
+*Venice on a Raspberry Pi 3 (1920x1080 desktop, Naples' menu bar and Milan's dock), with Video Info open: H.264 decoded by FFmpeg in software, drawn with OpenGL 2.1 on the VideoCore IV (Mesa vc4), sound through audiod.*
+
+## Status
+
+As of October 17, 2026, on the Pi 3 image:
+
+- **Works:** local files and network streams (http, https, HLS), the iOS-style controls, Video Info, full screen, sound through `audiod` (the 3.5 mm jack), GL drawing on the Pi's GPU.
+- **Limited:** decoding is software only. 480p plays smoothly and 720p does not (see the table below).
+- **Not yet confirmed on the Pi:** full screen under Window Maker.
+- **Known bug:** a second copy of Venice hangs at the start of playback while another copy has its audio open. Quit the other copy first, or start the second one with `-VeniceMPVOptions ao=null` for no sound.
+
 ## What you can do
 
 - Open a file (File > Open, ⌘O), a URL (File > Open URL, ⌘U), a path or URL given on the command line (`Venice movie.mkv`), a file dropped on the video, or Open With from Milan (Venice declares video and audio types).
@@ -10,21 +23,27 @@
 - Keys in the video: space plays and pauses, ← → seek 5 s (30 s with Shift), ↑ ↓ change the volume by 5, `m` mutes. A click on the video plays or pauses. The Playback menu has the same actions.
 - The window fits itself to each new video, scaled down to the screen.
 - Subtitles embedded in the file (libass).
+- **Video Info** (Playback > Video Info, ⌘I): file, container, codecs, size, pixel format, colour, frame rate, bitrates, decoder, renderer, dropped frames, audio output and cache, refreshed every second.
+- **Full screen** (the button at the right of the strip, Playback > Enter/Leave Full Screen, ⌘F, `f`, or a double-click on the video): the window asks Window Maker for `_NET_WM_STATE_FULLSCREEN` and hides the controls; Esc leaves.
+- Sound through iokit's `audiod`, which starts at boot. On the Pi it plays on the 3.5 mm jack. audiod fades the sound out when playback pauses or ends, so there is no pop.
 
 ## How fast, on a Raspberry Pi 3
 
-Big Buck Bunny, 720p H.264 High at 30 fps and 8 Mb/s, one pass (300 frames), on a Pi 3 B with a 1920x1080 desktop, GL renderer:
+Big Buck Bunny, 720p H.264 High at 30 fps and 8 Mb/s, one pass (300 frames), on a Pi 3 B at 1.2 GHz with a 1920x1080 desktop, GL renderer, no audio (`ao=null`). Two runs each, measured on October 17, 2026:
 
 | Window | Frames dropped | Drawn per frame |
 |---|---|---|
-| 854x480 | 9 (3%) | 29 ms |
-| 1280x720 | 30 (10%) | 29 ms |
+| 854x480 | 16–63 (5–21%) | 25–27 ms |
+| 1280x720 | 148–154 (about 50%) | 38 ms |
 
-Three things on the system decide this, and an image needs all three (iokit has them):
+A frame at 30 fps has 33 ms. At 1280x720 the draw alone takes longer, so about every other frame is dropped. A 480p source (the SilverHawks clip in the screenshot, 640x480) plays with a handful of drops. Earlier numbers in this README were lower because they were measured while the kernel ran its clock 1.25x slow (no `timebase-frequency` for the Pi's 19.2 MHz timer), which gave every frame 25% more real time.
+
+Four things on the system decide this, and an image needs all four (iokit has them):
 
 - **The ARM clock.** The firmware keeps the cores at 600 MHz unless asked for more, and nothing in the port asks, so `config.txt` sets `force_turbo=1` (1.2 GHz). At 600 MHz FFmpeg decodes this clip at about 30 frames/s on four cores, no headroom at all, and two thirds of the frames were dropped; at 1.2 GHz it decodes at about 60.
 - **MIT-SHM.** If `xlib_vc4` reports "MIT-SHM not used: shmget failed", `/etc/sysctl.conf` was not applied (no `/usr/sbin/sysctl`) and every frame goes through the X socket (41 ms instead of 3.6 to put an 854x480 frame).
 - **The GPU read-back.** Each GL frame is read back from GPU memory by the CPU; the V3D driver now does that through a really cached mapping (4.1 ms for 1280x720 instead of 37.7).
+- **The GPU memory pool.** The VideoCore's 3D block has no MMU, so its buffers must be physically contiguous. After a while of use, memory was too fragmented for large ones: allocation failed every frame, GL apps slowed to about 14 fps, and full-screen-sized windows stayed black. The V3D driver now reserves 128 MB at boot and allocates from that (`v3d-pool=<MB>` boot argument).
 
 The decoder is software (FFmpeg, NEON, four threads); the GPU does colour conversion, scaling and subtitles. A window opens at most 1280 wide for a video (`VeniceMaxVideoWidth`). The sw renderer is 3-5x slower than gl at every size, which is why gl is the default.
 
@@ -32,7 +51,8 @@ The decoder is software (FFmpeg, NEON, four threads); the GPU does colour conver
 
 - **No hardware video decoding.** The Pi 3's H.264 decoder is on the VideoCore VPU, reached on Linux through MMAL or V4L2 over VCHIQ; this kernel has no driver for either. FFmpeg decodes in software with its NEON code on all four cores; see the table above. HEVC and VP9 above SD will drop more.
 - A progressive MP4 over HTTP needs either its index at the front (`-movflags +faststart`) or a server that answers Range requests; otherwise mpv cannot reach the index and reports "Invalid data" while it plays. Real streaming servers and HLS are fine.
-- No playlists, no chapter or track menus (audio/subtitle tracks are mpv's defaults), no fullscreen, no screenshots, no external subtitle files.
+- No playlists, no chapter or track menus (audio/subtitle tracks are mpv's defaults), no screenshots, no external subtitle files.
+- Two copies of Venice cannot both play sound: the second one hangs as it opens its audio output (see Status).
 - The volume is mpv's own (0–100%, per player), not the system volume in Naples' menu bar.
 - `https://` does not verify certificates (FFmpeg's default `tls_verify=0`; there is no CA bundle on the image).
 - Building needs a Mac and the iokit toolchain. There is no prebuilt package.
@@ -104,6 +124,7 @@ Environment: `VENICE_DEBUG=1` prints mpv's log, `VENICE_STATS=1` the renderer's 
 | `VeniceVideoGL.c`, `VeniceVideoSW.c` | the two render surfaces |
 | `VeniceX.c` | Venice's X connection |
 | `icons/`, `tools/make_icon.m` | the icon and its generator |
+| `docs/screenshot.png` | the screenshot at the top of this file |
 
 ## Licence
 
