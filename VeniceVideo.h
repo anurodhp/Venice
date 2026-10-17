@@ -39,6 +39,7 @@ struct VeniceVideo {
 	/* VENICE_STATS: frames drawn and the time spent drawing them */
 	unsigned long frames;
 	double t_draw;
+	double t_render;     /* of t_draw: mpv_render_context_render() (GL), the rest is the present */
 };
 
 /* `parent` is the X window of the GNUstep window; x, y is the view's origin

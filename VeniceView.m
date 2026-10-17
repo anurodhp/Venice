@@ -150,8 +150,9 @@ expose_cb(void *owner)
 		return;
 	[player attachRenderContext: NULL];
 	if (g_stats && video->frames > 0)
-		fprintf(stderr, "venice-stats: renderer=%s %dx%d frames=%lu draw=%.2fms/frame\n", video->name,
-		    video->width, video->height, video->frames, video->t_draw / video->frames);
+		fprintf(stderr, "venice-stats: renderer=%s %dx%d frames=%lu draw=%.2fms/frame (render %.2f)\n", video->name,
+		    video->width, video->height, video->frames, video->t_draw / video->frames,
+		    video->t_render / video->frames);
 	video->destroy(video);
 	video = NULL;
 }
@@ -162,8 +163,9 @@ expose_cb(void *owner)
 		return;
 	video->draw(video);
 	if (g_stats && video->frames % 300 == 0)
-		fprintf(stderr, "venice-stats: renderer=%s %dx%d frames=%lu draw=%.2fms/frame\n", video->name,
-		    video->width, video->height, video->frames, video->t_draw / video->frames);
+		fprintf(stderr, "venice-stats: renderer=%s %dx%d frames=%lu draw=%.2fms/frame (render %.2f)\n", video->name,
+		    video->width, video->height, video->frames, video->t_draw / video->frames,
+		    video->t_render / video->frames);
 	/* XSync in a frame may have queued events (exposes) */
 	venice_x_pump();
 }

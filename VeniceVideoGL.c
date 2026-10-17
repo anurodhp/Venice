@@ -67,6 +67,7 @@ gl_draw(VeniceVideo *v)
 		{ 0 }
 	};
 	mpv_render_context_render(v->rc, params);
+	v->t_render += venice_now_ms() - t0;
 	glXSwapBuffers(g->dpy, g->win);
 	mpv_render_context_report_swap(v->rc);
 	v->frames++;
