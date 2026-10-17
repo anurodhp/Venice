@@ -19,6 +19,7 @@ typedef enum {
 	VeniceIconForward,      /* skip forward */
 	VeniceIconSpeakerLow,   /* volume down: Naples' speaker, no waves */
 	VeniceIconSpeakerHigh,  /* volume up: Naples' speaker, three waves */
+	VeniceIconFullscreen,   /* four corners pointing out */
 } VeniceIcon;
 
 @interface VeniceIconButton : NSControl

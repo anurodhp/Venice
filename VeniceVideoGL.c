@@ -138,6 +138,8 @@ venice_video_gl_new(mpv_handle *mpv, unsigned long parent, int x, int y, int w, 
 		gl_destroy(v);
 		return NULL;
 	}
+	snprintf(v->info, sizeof(v->info), "OpenGL %s, %s", (const char *)glGetString(GL_VERSION),
+	    (const char *)glGetString(GL_RENDERER));
 	if (getenv("VENICE_STATS") != NULL)
 		fprintf(stderr, "venice: GL_RENDERER %s, GL_VERSION %s\n", glGetString(GL_RENDERER), glGetString(GL_VERSION));
 

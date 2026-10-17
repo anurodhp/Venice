@@ -3,6 +3,7 @@
  */
 #import "VeniceWindow.h"
 #import "VeniceView.h"
+#import <GNUstepGUI/GSDisplayServer.h>
 #include "VeniceX.h"
 #include <math.h>
 
@@ -114,8 +115,11 @@ format_time(double t)
 	[forwardButton setToolTip: @"Forward 10 seconds"];
 	[volDown setToolTip: @"Volume down"];
 	[volUp setToolTip: @"Volume up"];
+	fullscreenButton = [[VeniceIconButton alloc] initWithFrame: NSZeroRect icon: VeniceIconFullscreen target: self
+	    action: @selector(toggleFullscreen:)];
+	[fullscreenButton setToolTip: @"Full screen (Esc to leave)"];
 	for (NSView *v in [NSArray arrayWithObjects: scrubber, backButton, playButton, forwardButton, volDown,
-	                                            volumeTrack, volUp, nil]) {
+	                                            volumeTrack, volUp, fullscreenButton, nil]) {
 		[bar addSubview: v];
 		[v release];
 	}
@@ -126,6 +130,8 @@ format_time(double t)
 
 - (void) dealloc
 {
+	[infoTimer invalidate];
+	[infoPanel release];
 	[videoView stop];
 	[player shutdown];
 	[videoView release];
@@ -145,8 +151,11 @@ format_time(double t)
 {
 	NSRect b = [[window contentView] bounds];
 	CGFloat w = NSWidth(b), cx = floor(w / 2);
+	/* full screen: the video alone */
+	CGFloat bh = fullscreen ? 0 : BAR_H;
+	[bar setHidden: fullscreen];
 	[bar setFrame: NSMakeRect(0, 0, w, BAR_H)];
-	[videoView setFrame: NSMakeRect(0, BAR_H, w, MAX(1, NSHeight(b) - BAR_H))];
+	[videoView setFrame: NSMakeRect(0, bh, w, MAX(1, NSHeight(b) - bh))];
 	/* the bar is flipped: y runs down from the video's bottom edge */
 	[scrubber setFrame: NSMakeRect(MARGIN - 6, SCRUB_Y, w - 2 * MARGIN + 12, SCRUB_H)];
 	[bar setLeftRect: NSMakeRect(MARGIN, TIME_Y, 100, TIME_H) rightRect: NSMakeRect(w - MARGIN - 100, TIME_Y, 100, TIME_H)];
@@ -154,6 +163,7 @@ format_time(double t)
 	[playButton setFrame: NSMakeRect(cx - t / 2, TRANSPORT_Y, t, t)];
 	[backButton setFrame: NSMakeRect(cx - t / 2 - 24 - t, TRANSPORT_Y, t, t)];
 	[forwardButton setFrame: NSMakeRect(cx + t / 2 + 24, TRANSPORT_Y, t, t)];
+	[fullscreenButton setFrame: NSMakeRect(w - MARGIN - 28, TRANSPORT_Y + (t - 28) / 2, 28, 28)];
 	/* the volume row: at most 360 wide, centred, speakers at its ends */
 	CGFloat vw = MIN(w - 2 * MARGIN, 360), vx = cx - floor(vw / 2), sw = 28;
 	[volDown setFrame: NSMakeRect(vx, VOLUME_Y, sw, VOLUME_H)];
@@ -261,8 +271,119 @@ format_time(double t)
 	case NSUpArrowFunctionKey: [player changeVolumeBy: 5]; return YES;
 	case NSDownArrowFunctionKey: [player changeVolumeBy: -5]; return YES;
 	case 'm': case 'M': [player toggleMute]; return YES;
+	case 'f': case 'F': [self toggleFullscreen: self]; return YES;
+	case 0x1b:                  /* Esc leaves full screen */
+		if (fullscreen) {
+			[self toggleFullscreen: self];
+			return YES;
+		}
+		return NO;
 	}
 	return NO;
+}
+
+/* ---- full screen ---- */
+
+- (BOOL) isFullscreen { return fullscreen; }
+
+- (void) toggleFullscreen: (id)sender
+{
+	GSDisplayServer *srv = GSCurrentServer();
+	unsigned long xwin = (unsigned long)(uintptr_t)[srv windowDevice: [window windowNumber]];
+	fullscreen = !fullscreen;
+	/* the strip goes first, so the resize Window Maker answers with is laid out for the video alone */
+	[self layoutViews];
+	venice_x_set_fullscreen(xwin, fullscreen);
+	[window makeFirstResponder: videoView];
+}
+
+/* ---- Video Info ---- */
+
+static void
+info_line(NSMutableString *s, NSString *label, NSString *value)
+{
+	[s appendFormat: @"%@%@\n", [label stringByPaddingToLength: 16 withString: @" " startingAtIndex: 0],
+	    value != nil && [value length] > 0 ? value : @"-"];
+}
+
+- (NSString *) infoText
+{
+	VenicePlayer *p = player;
+	NSMutableString *s = [NSMutableString string];
+	NSString *(^prop)(const char *) = ^(const char *n) { return [p property: n]; };
+	NSString *(^join)(NSString *, NSString *, NSString *) = ^(NSString *a, NSString *sep, NSString *b) {
+		return a != nil && b != nil ? [NSString stringWithFormat: @"%@%@%@", a, sep, b] : nil;
+	};
+	info_line(s, @"File", [p path]);
+	info_line(s, @"Title", [p title]);
+	info_line(s, @"Container", prop("file-format"));
+	info_line(s, @"Position", [NSString stringWithFormat: @"%@ / %@", format_time([p timePos]),
+	    [p duration] > 0 ? format_time([p duration]) : @"live"]);
+	[s appendString: @"\n"];
+	info_line(s, @"Video codec", prop("video-codec"));
+	info_line(s, @"Size", join(prop("video-params/w"), @" x ", prop("video-params/h")));
+	info_line(s, @"Pixel format", prop("video-params/pixelformat"));
+	info_line(s, @"Colour", join(prop("video-params/colormatrix"), @", ", prop("video-params/colorlevels")));
+	{
+		NSString *fps = prop("container-fps"), *shown = prop("estimated-display-fps");
+		info_line(s, @"Frame rate", fps == nil ? nil : shown == nil
+		    ? [NSString stringWithFormat: @"%.3g fps", [fps doubleValue]]
+		    : [NSString stringWithFormat: @"%.3g fps, %.3g shown", [fps doubleValue], [shown doubleValue]]);
+	}
+	info_line(s, @"Video bitrate", prop("video-bitrate"));
+	info_line(s, @"Decoder", [NSString stringWithFormat: @"%@ (software, FFmpeg)", prop("hwdec-current") ?: @"no hardware"]);
+	info_line(s, @"Renderer", [NSString stringWithFormat: @"%s: %s", [videoView rendererName], [videoView rendererInfo]]);
+	info_line(s, @"Output size", join(prop("osd-width"), @" x ", prop("osd-height")));
+	info_line(s, @"Dropped", join(prop("frame-drop-count"), @" output, ", join(prop("decoder-frame-drop-count"), @" decoder", @"")));
+	[s appendString: @"\n"];
+	info_line(s, @"Audio codec", prop("audio-codec"));
+	info_line(s, @"Audio format", join(prop("audio-params/samplerate"), @" Hz, ",
+	    join(prop("audio-params/channel-count"), @" ch, ", prop("audio-params/format"))));
+	info_line(s, @"Audio bitrate", prop("audio-bitrate"));
+	info_line(s, @"Audio output", join(prop("current-ao"), @", ", prop("audio-device")));
+	[s appendString: @"\n"];
+	info_line(s, @"Cache", prop("demuxer-cache-duration") ? [NSString stringWithFormat: @"%.1f s ahead",
+	    [prop("demuxer-cache-duration") doubleValue]] : nil);
+	return s;
+}
+
+- (void) refreshInfo: (NSTimer *)t
+{
+	if (![infoPanel isVisible]) {
+		[infoTimer invalidate];
+		infoTimer = nil;
+		return;
+	}
+	[infoText setString: [self infoText]];
+}
+
+- (void) showInfo: (id)sender
+{
+	if (infoPanel == nil) {
+		infoPanel = [[NSPanel alloc] initWithContentRect: NSMakeRect(0, 0, 560, 460)
+		    styleMask: NSTitledWindowMask | NSClosableWindowMask | NSResizableWindowMask
+		    backing: NSBackingStoreBuffered defer: NO];
+		[infoPanel setTitle: @"Video Info"];
+		[infoPanel setReleasedWhenClosed: NO];
+		NSScrollView *sv = [[NSScrollView alloc] initWithFrame: [[infoPanel contentView] bounds]];
+		[sv setHasVerticalScroller: YES];
+		[sv setAutoresizingMask: NSViewWidthSizable | NSViewHeightSizable];
+		infoText = [[NSTextView alloc] initWithFrame: [[sv contentView] bounds]];
+		[infoText setEditable: NO];
+		[infoText setSelectable: YES];
+		[infoText setFont: [NSFont userFixedPitchFontOfSize: 11]];
+		[infoText setAutoresizingMask: NSViewWidthSizable];
+		[sv setDocumentView: infoText];
+		[[infoPanel contentView] addSubview: sv];
+		[infoText release];
+		[sv release];
+		[infoPanel center];
+	}
+	[infoText setString: [self infoText]];
+	[infoPanel makeKeyAndOrderFront: nil];
+	if (infoTimer == nil)
+		infoTimer = [NSTimer scheduledTimerWithTimeInterval: 1.0 target: self selector: @selector(refreshInfo:)
+		    userInfo: nil repeats: YES];
 }
 
 /* ---- VenicePlayerDelegate ---- */

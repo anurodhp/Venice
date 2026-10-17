@@ -28,4 +28,8 @@ void venice_x_pump(void);
 
 double venice_now_ms(void);
 
+/* Asks the window manager to make top-level window `win` full screen, or to
+ * restore it (EWMH _NET_WM_STATE_FULLSCREEN, which Window Maker honours). */
+void venice_x_set_fullscreen(unsigned long win, int on);
+
 #endif

@@ -72,6 +72,7 @@ expose_cb(void *owner)
 - (BOOL) acceptsFirstResponder { return YES; }
 - (void) setTarget: (id <VeniceViewTarget>)t { target = t; }
 - (const char *) rendererName { return video ? video->name : "none"; }
+- (const char *) rendererInfo { return video ? video->info : ""; }
 
 - (void) drawRect: (NSRect)r
 {
@@ -222,8 +223,14 @@ expose_cb(void *owner)
 
 - (void) mouseDown: (NSEvent *)ev
 {
-	if ([ev clickCount] == 1)
+	/* one click plays/pauses; a double click goes full screen, and undoes the
+	 * pause its first click made */
+	if ([ev clickCount] == 1) {
 		[target togglePause: self];
+	} else if ([ev clickCount] == 2) {
+		[target togglePause: self];
+		[target toggleFullscreen: self];
+	}
 }
 
 - (void) keyDown: (NSEvent *)ev

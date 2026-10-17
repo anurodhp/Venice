@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 static Display *g_dpy;
@@ -55,6 +56,26 @@ venice_x_unregister(Window w)
 			return;
 		}
 	}
+}
+
+void
+venice_x_set_fullscreen(unsigned long win, int on)
+{
+	Display *dpy = venice_x_display();
+	if (dpy == NULL || win == 0)
+		return;
+	XEvent e;
+	memset(&e, 0, sizeof(e));
+	e.xclient.type = ClientMessage;
+	e.xclient.window = (Window)win;
+	e.xclient.message_type = XInternAtom(dpy, "_NET_WM_STATE", False);
+	e.xclient.format = 32;
+	e.xclient.data.l[0] = on ? 1 : 0;              /* _NET_WM_STATE_ADD / _REMOVE */
+	e.xclient.data.l[1] = (long)XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
+	e.xclient.data.l[2] = 0;
+	e.xclient.data.l[3] = 1;                       /* source: a normal application */
+	XSendEvent(dpy, DefaultRootWindow(dpy), False, SubstructureRedirectMask | SubstructureNotifyMask, &e);
+	XFlush(dpy);
 }
 
 void

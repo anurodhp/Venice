@@ -149,6 +149,8 @@ argument_to_open(void)
 - (void) toggleMute: (id)s { [player toggleMute: s]; }
 - (void) seekForward: (id)s { [player seekForward: s]; }
 - (void) seekBackward: (id)s { [player seekBackward: s]; }
+- (void) toggleFullscreen: (id)s { [player toggleFullscreen: s]; }
+- (void) showInfo: (id)s { [player showInfo: s]; }
 
 - (BOOL) validateMenuItem: (NSMenuItem *)i
 {
@@ -193,6 +195,8 @@ argument_to_open(void)
 	add_item(m, @"Volume Up", @selector(volumeUp:), @"=", self);
 	add_item(m, @"Volume Down", @selector(volumeDown:), @"-", self);
 	add_item(m, @"Mute", @selector(toggleMute:), @"m", self);
+	add_item(m, @"Enter/Leave Full Screen", @selector(toggleFullscreen:), @"f", self);
+	add_item(m, @"Video Info", @selector(showInfo:), @"i", self);
 	[main setSubmenu: m forItem: add_item(main, @"Playback", NULL, nil, nil)]; [m release];
 
 	[NSApp setMainMenu: main];

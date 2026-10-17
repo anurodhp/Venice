@@ -143,6 +143,24 @@ speaker(NSRect b, int waves, BOOL muted)
 	case VeniceIconSpeakerHigh:
 		speaker(b, 3, NO);
 		break;
+	case VeniceIconFullscreen: {
+		/* four L-shaped corners, open towards the edges */
+		CGFloat h = floor(s * 0.30), a = floor(s * 0.13);
+		NSBezierPath *p = [NSBezierPath bezierPath];
+		for (int dx = -1; dx <= 1; dx += 2) {
+			for (int dy = -1; dy <= 1; dy += 2) {
+				CGFloat x = cx + dx * h, y = cy + dy * h;
+				[p moveToPoint: NSMakePoint(x - dx * a, y)];
+				[p lineToPoint: NSMakePoint(x, y)];
+				[p lineToPoint: NSMakePoint(x, y - dy * a)];
+			}
+		}
+		[p setLineWidth: MAX(2, s * 0.07)];
+		[p setLineCapStyle: NSRoundLineCapStyle];
+		[p setLineJoinStyle: NSRoundLineJoinStyle];
+		[p stroke];
+		break;
+	}
 	}
 }
 

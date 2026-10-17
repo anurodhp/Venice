@@ -63,6 +63,8 @@
 - (BOOL) isBuffering;
 /* played to the end of the file (keep-open holds the last frame, paused) */
 - (BOOL) isAtEnd;
+/* mpv's string value of a property, or nil */
+- (NSString *) property: (const char *)name;
 /* codec, size and dropped-frame counters, one line (VeniceQuitAtEnd logs it) */
 - (NSString *) playbackStats;
 - (NSString *) title;

@@ -10,6 +10,7 @@
 /* What the view's clicks and keys go to (VeniceWindow). */
 @protocol VeniceViewTarget
 - (void) togglePause: (id)sender;
+- (void) toggleFullscreen: (id)sender;
 - (BOOL) handleKey: (NSEvent *)ev;
 - (void) openPath: (NSString *)pathOrURL;
 @end
@@ -31,5 +32,7 @@
 /* Free the render context (before the player shuts mpv down). */
 - (void) stop;
 - (const char *) rendererName;
+/* what the surface draws with ("OpenGL 2.1 ..., VC4 V3D 2.1"), or "" */
+- (const char *) rendererInfo;
 - (void) setTarget: (id <VeniceViewTarget>)t;
 @end

@@ -231,6 +231,7 @@ venice_video_sw_new(mpv_handle *mpv, unsigned long parent, int x, int y, int w, 
 	s->depth = DefaultDepth(dpy, scr);
 	s->format = fmt;
 	s->use_shm = -1;
+	snprintf(v->info, sizeof(v->info), "software (libswscale), %s pixels", fmt);
 	/* The image is in the default visual, so the window must be too: the
 	 * GNUstep window it sits in may use another (a 32-bit ARGB one), and a
 	 * CopyFromParent child would inherit it and refuse every XShmPutImage

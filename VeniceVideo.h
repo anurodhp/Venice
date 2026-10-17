@@ -23,6 +23,7 @@
 typedef struct VeniceVideo VeniceVideo;
 struct VeniceVideo {
 	const char *name;
+	char info[128];             /* what it draws with, for Video Info (the GL renderer string) */
 	unsigned long win;          /* the child X window */
 	int width, height;          /* its size in pixels */
 	mpv_render_context *rc;

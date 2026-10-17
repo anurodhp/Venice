@@ -270,6 +270,18 @@ default_string(NSString *key)
 - (BOOL) isBuffering { return buffering; }
 - (BOOL) isAtEnd { return eof && !idle; }
 
+- (NSString *) property: (const char *)name
+{
+	if (mpv == NULL)
+		return nil;
+	char *v = mpv_get_property_string(mpv, name);
+	if (v == NULL)
+		return nil;
+	NSString *s = [NSString stringWithUTF8String: v];
+	mpv_free(v);
+	return s;
+}
+
 - (NSString *) playbackStats
 {
 	NSMutableString *out = [NSMutableString string];
