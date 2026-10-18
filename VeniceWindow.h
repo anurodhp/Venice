@@ -44,6 +44,8 @@
  * screen and the control strip hides; Esc, the menu item or a double click
  * on the video restores the window */
 - (void) toggleFullscreen: (id)sender;
+- (void) scheduleOverlayUpdate;
+- (void) updateOverlay;
 - (BOOL) isFullscreen;
 /* Video Info: what is playing and how, refreshed every second while open */
 - (void) showInfo: (id)sender;

@@ -68,7 +68,11 @@ gl_draw(VeniceVideo *v)
 	};
 	mpv_render_context_render(v->rc, params);
 	v->t_render += venice_now_ms() - t0;
-	glXSwapBuffers(g->dpy, g->win);
+	if (!v->overlay || v->presented_w != v->width || v->presented_h != v->height) {
+		glXSwapBuffers(g->dpy, g->win);
+		v->presented_w = v->overlay ? v->width : 0;
+		v->presented_h = v->overlay ? v->height : 0;
+	}
 	mpv_render_context_report_swap(v->rc);
 	v->frames++;
 	v->t_draw += venice_now_ms() - t0;

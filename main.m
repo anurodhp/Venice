@@ -9,7 +9,7 @@
  * ("key=value,key=value", passed to mpv), VeniceHardwareDecoding (NO:
  * decode in software even where the VPU could), VeniceQuitAtEnd (YES: quit
  * when the file ends, exit status 1 if it cannot be played; for scripted
- * tests).
+ * tests), VeniceFullScreen (YES: start in full screen).
  * Environment: VENICE_DEBUG=1 prints
  * mpv's log, VENICE_STATS=1 the renderer's frame times.
  */

@@ -119,6 +119,8 @@ hwdec_compare /usr/local/share/hwdec/hwdec_test_720p.mp4
 | `VeniceHardwareDecoding` | `NO` decodes in software even where the VPU could (default `YES`) |
 | `VeniceMPVOptions` | more mpv options, `key=value,key=value` (e.g. `vd-lavc-skiploopfilter=all` to trade quality for speed on the Pi) |
 | `VeniceQuitAtEnd` | `YES` quits when the file ends (scripted tests) |
+| `VeniceFullScreen` | `YES` starts in full screen |
+| `VeniceOverlay` | `NO` draws full-screen video through GL too (default: on the Pi, full-screen video is a VideoCore display layer) |
 | `VeniceMaxVideoWidth` | the widest the window opens for a video (default 1280; it can still be resized) |
 
 Environment: `VENICE_DEBUG=1` prints mpv's log, `VENICE_STATS=1` the renderer's frame times, `VENICE_NOSHM=1` makes the sw renderer use `XPutImage`.

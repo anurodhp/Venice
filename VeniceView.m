@@ -73,6 +73,7 @@ expose_cb(void *owner)
 - (void) setTarget: (id <VeniceViewTarget>)t { target = t; }
 - (const char *) rendererName { return video ? video->name : "none"; }
 - (const char *) rendererInfo { return video ? video->info : ""; }
+- (unsigned long) videoWindow { return video ? video->win : 0; }
 
 - (void) drawRect: (NSRect)r
 {
@@ -161,6 +162,7 @@ expose_cb(void *owner)
 {
 	if (video == NULL)
 		return;
+	video->overlay = [player isOverlay];
 	video->draw(video);
 	if (g_stats && video->frames % 300 == 0)
 		fprintf(stderr, "venice-stats: renderer=%s %dx%d frames=%lu draw=%.2fms/frame (render %.2f)\n", video->name,

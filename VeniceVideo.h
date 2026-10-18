@@ -36,6 +36,12 @@ struct VeniceVideo {
 	 * context current), then the window. */
 	void (*destroy)(VeniceVideo *v);
 
+	/* The video is a hardware layer over the window (VenicePlayer
+	 * isOverlay): mpv's GL frame is only the black under it, so draw()
+	 * puts it on the window only when it changes size (the letterbox). */
+	int overlay;
+	int presented_w, presented_h;
+
 	/* VENICE_STATS: frames drawn and the time spent drawing them */
 	unsigned long frames;
 	double t_draw;

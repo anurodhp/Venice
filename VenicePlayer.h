@@ -34,6 +34,9 @@
 	id delegate;
 	double timePos, duration, volume;
 	BOOL paused, muted, idle, seekable, buffering, eof;
+	BOOL hardware;          /* the VPU may decode (VeniceHardwareDecoding) */
+	BOOL overlay;           /* mpv decodes with hwdec=mmal: the video is a display layer */
+	int overlayWanted;      /* what setOverlay last asked hwdec for: -1 nothing yet */
 	NSString *title, *path;
 	int64_t dwidth, dheight;
 }
@@ -57,6 +60,12 @@
 - (double) duration;
 - (double) volume;
 - (BOOL) isPaused;
+/* Full screen on the Pi: the VPU's frames go straight to a VideoCore
+ * display layer at screen position x, y (mpv's rpi-overlay, hwdec=mmal);
+ * NO goes back to frames drawn through GL (mmal-copy). */
+- (void) setOverlay: (BOOL)on x: (int)x y: (int)y;
+/* mpv is showing the video as that layer (hwdec-current is mmal) */
+- (BOOL) isOverlay;
 - (BOOL) isMuted;
 - (BOOL) isIdle;
 - (BOOL) isSeekable;

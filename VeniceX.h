@@ -31,5 +31,8 @@ double venice_now_ms(void);
 /* Asks the window manager to make top-level window `win` full screen, or to
  * restore it (EWMH _NET_WM_STATE_FULLSCREEN, which Window Maker honours). */
 void venice_x_set_fullscreen(unsigned long win, int on);
+/* The screen position of `win`'s top-left pixel (a round trip). 0 if there
+ * is no display or the window is gone. */
+int venice_x_screen_origin(unsigned long win, int *x, int *y);
 
 #endif

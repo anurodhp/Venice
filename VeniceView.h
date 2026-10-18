@@ -34,5 +34,7 @@
 - (const char *) rendererName;
 /* what the surface draws with ("OpenGL 2.1 ..., VC4 V3D 2.1"), or "" */
 - (const char *) rendererInfo;
+/* the child X window the video is drawn into (0 before -start) */
+- (unsigned long) videoWindow;
 - (void) setTarget: (id <VeniceViewTarget>)t;
 @end

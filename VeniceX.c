@@ -78,6 +78,16 @@ venice_x_set_fullscreen(unsigned long win, int on)
 	XFlush(dpy);
 }
 
+int
+venice_x_screen_origin(unsigned long win, int *x, int *y)
+{
+	Display *dpy = venice_x_display();
+	Window child;
+	if (dpy == NULL || win == 0)
+		return 0;
+	return XTranslateCoordinates(dpy, (Window)win, DefaultRootWindow(dpy), 0, 0, x, y, &child);
+}
+
 void
 venice_x_pump(void)
 {

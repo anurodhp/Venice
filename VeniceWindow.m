@@ -175,6 +175,31 @@ format_time(double t)
 - (void) windowDidResize: (NSNotification *)n
 {
 	[self layoutViews];
+	[self scheduleOverlayUpdate];
+}
+
+- (void) windowDidMove: (NSNotification *)n
+{
+	[self scheduleOverlayUpdate];
+}
+
+/* The overlay (VenicePlayer setOverlay:) is placed in screen pixels, at the
+ * video window's top-left: asked of the X server once the move or resize
+ * has reached it, so a moment after the notification. */
+- (void) scheduleOverlayUpdate
+{
+	[NSObject cancelPreviousPerformRequestsWithTarget: self selector: @selector(updateOverlay) object: nil];
+	[self performSelector: @selector(updateOverlay) withObject: nil afterDelay: 0.1];
+}
+
+- (void) updateOverlay
+{
+	int x = 0, y = 0;
+	BOOL on = fullscreen && ([[NSUserDefaults standardUserDefaults] objectForKey: @"VeniceOverlay"] == nil ||
+	    [[NSUserDefaults standardUserDefaults] boolForKey: @"VeniceOverlay"]);
+	if (on && !venice_x_screen_origin([videoView videoWindow], &x, &y))
+		on = NO;
+	[player setOverlay: on x: x y: y];
 }
 - (VenicePlayer *) player { return player; }
 
@@ -187,6 +212,10 @@ format_time(double t)
 	/* the X child window needs the GNUstep window on the server: after the
 	 * order-front, on the next pass of the run loop */
 	[self performSelector: @selector(startVideo) withObject: nil afterDelay: 0];
+	/* after the window manager has mapped and placed the window: it ignores
+	 * a full-screen request for a window it does not manage yet */
+	if ([[NSUserDefaults standardUserDefaults] boolForKey: @"VeniceFullScreen"])
+		[self performSelector: @selector(toggleFullscreen:) withObject: nil afterDelay: 0.5];
 }
 
 - (void) startVideo
@@ -294,6 +323,7 @@ format_time(double t)
 	/* the strip goes first, so the resize Window Maker answers with is laid out for the video alone */
 	[self layoutViews];
 	venice_x_set_fullscreen(xwin, fullscreen);
+	[self scheduleOverlayUpdate];
 	[window makeFirstResponder: videoView];
 }
 
@@ -440,6 +470,10 @@ info_line(NSMutableString *s, NSString *label, NSString *value)
 	if (sizedForVideo)
 		return;
 	sizedForVideo = YES;
+	/* a full-screen window keeps the screen: resizing it would take the
+	 * window manager out of full screen */
+	if (fullscreen)
+		return;
 	NSRect vis = [[window screen] visibleFrame];
 	if (NSIsEmptyRect(vis))
 		vis = [[NSScreen mainScreen] visibleFrame];

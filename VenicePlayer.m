@@ -11,7 +11,7 @@
 
 enum {
 	P_TIME_POS = 1, P_DURATION, P_PAUSE, P_VOLUME, P_MUTE, P_IDLE, P_EOF, P_TITLE, P_DWIDTH, P_DHEIGHT,
-	P_SEEKABLE, P_BUFFERING,
+	P_SEEKABLE, P_BUFFERING, P_HWDEC,
 };
 
 /* Both callbacks run on mpv's threads: they may only wake the main thread. */
@@ -88,6 +88,8 @@ default_string(NSString *key)
 	 * VeniceHardwareDecoding NO: always software. */
 	BOOL hw = [[NSUserDefaults standardUserDefaults] objectForKey: @"VeniceHardwareDecoding"] == nil ||
 	    [[NSUserDefaults standardUserDefaults] boolForKey: @"VeniceHardwareDecoding"];
+	hardware = hw;
+	overlayWanted = -1;
 	mpv_set_option_string(mpv, "hwdec", hw ? "mmal-copy" : "no");
 	mpv_set_option_string(mpv, "hwdec-codecs", "h264,mpeg4");
 	mpv_set_option_string(mpv, "vd-lavc-threads", "0");
@@ -128,6 +130,7 @@ default_string(NSString *key)
 	mpv_observe_property(mpv, P_MUTE, "mute", MPV_FORMAT_FLAG);
 	mpv_observe_property(mpv, P_IDLE, "idle-active", MPV_FORMAT_FLAG);
 	mpv_observe_property(mpv, P_EOF, "eof-reached", MPV_FORMAT_FLAG);
+	mpv_observe_property(mpv, P_HWDEC, "hwdec-current", MPV_FORMAT_STRING);
 	mpv_observe_property(mpv, P_TITLE, "media-title", MPV_FORMAT_STRING);
 	mpv_observe_property(mpv, P_DWIDTH, "dwidth", MPV_FORMAT_INT64);
 	mpv_observe_property(mpv, P_DHEIGHT, "dheight", MPV_FORMAT_INT64);
@@ -303,6 +306,31 @@ default_string(NSString *key)
 	}
 	return out;
 }
+/*
+ * The overlay: mpv's rpi-overlay hwdec (iokit docs/video-decode.md; the
+ * anurodhp/mpv fork) hands the decoder's opaque VideoCore frames to the
+ * VPU's video_render, which shows them as a hardware layer above the X
+ * framebuffer -- no copy, no GL, no X put. Above X means above every
+ * window, so it is only for full screen, where nothing else is on the
+ * video. Switching hwdec restarts the decoder (a moment's pause). Without
+ * a VPU (QEMU) hwdec=mmal fails and mpv decodes in software through GL.
+ */
+- (void) setOverlay: (BOOL)on x: (int)x y: (int)y
+{
+	if (mpv == NULL || !hardware)
+		return;
+	char buf[16];
+	snprintf(buf, sizeof(buf), "%d", x);
+	mpv_set_property_string(mpv, "rpi-overlay-x", buf);
+	snprintf(buf, sizeof(buf), "%d", y);
+	mpv_set_property_string(mpv, "rpi-overlay-y", buf);
+	/* only on a change: setting hwdec restarts the decoder */
+	if (overlayWanted != on) {
+		overlayWanted = on;
+		mpv_set_property_string(mpv, "hwdec", on ? "mmal" : "mmal-copy");
+	}
+}
+- (BOOL) isOverlay { return overlay; }
 - (NSString *) title { return title; }
 - (NSString *) path { return path; }
 
@@ -322,6 +350,7 @@ default_string(NSString *key)
 	case P_EOF: eof = d ? *(int *)d : NO; break;
 	case P_SEEKABLE: seekable = d ? *(int *)d : NO; break;
 	case P_BUFFERING: buffering = d ? *(int *)d : NO; break;
+	case P_HWDEC: overlay = d != NULL && strcmp(*(char **)d, "mmal") == 0; break;
 	case P_TITLE:
 		ASSIGN(title, d ? [NSString stringWithUTF8String: *(char **)d] : nil);
 		break;
